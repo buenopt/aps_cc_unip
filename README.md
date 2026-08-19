@@ -50,4 +50,102 @@ Abaixo é demostrado as tabelas utilizadas na base de dados, sendo ela bem simpl
  
 Documentação completa está na pasta DOCS_APP
 
+Para criação do banco de dados, segue script: 
+
+/*
+    Banco de dados: apscc
+    Origem: diagrama fornecido pelo usuário.
+
+    Observação:
+    - Os tipos de dados não aparecem no diagrama; foram definidos de forma
+      conservadora para SQL Server.
+    - A relação desenhada foi interpretada como resposta.respostaCC (1) ->
+      pergunta.respostaC (N).
+*/
+
+USE [master];
+GO
+
+IF DB_ID(N'apscc') IS NULL
+BEGIN
+    CREATE DATABASE [apscc];
+END;
+GO
+
+USE [apscc];
+GO
+
+/* Tabela de respostas */
+IF OBJECT_ID(N'dbo.resposta', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.resposta
+    (
+        id_resposta INT IDENTITY(1,1) NOT NULL,
+        respostaCC NVARCHAR(255) NOT NULL,
+
+        CONSTRAINT PK_resposta PRIMARY KEY CLUSTERED (respostaCC),
+        CONSTRAINT UQ_resposta_id_resposta UNIQUE (id_resposta)
+    );
+END;
+GO
+
+/* Tabela de pontuação */
+IF OBJECT_ID(N'dbo.pontuacao', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.pontuacao
+    (
+        idPuntuacao INT IDENTITY(1,1) NOT NULL,
+        nome NVARCHAR(150) NOT NULL,
+        pontuacao INT NOT NULL,
+
+        CONSTRAINT PK_pontuacao PRIMARY KEY CLUSTERED (idPuntuacao),
+        CONSTRAINT CK_pontuacao_valor CHECK (pontuacao >= 0)
+    );
+END;
+GO
+
+/* Tabela de perguntas */
+IF OBJECT_ID(N'dbo.pergunta', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.pergunta
+    (
+        idPergunta INT IDENTITY(1,1) NOT NULL,
+        perguntaC NVARCHAR(1000) NOT NULL,
+        pontos INT NOT NULL,
+        respostaC NVARCHAR(255) NOT NULL,
+
+        CONSTRAINT PK_pergunta PRIMARY KEY CLUSTERED (idPergunta),
+        CONSTRAINT CK_pergunta_pontos CHECK (pontos >= 0)
+    );
+END;
+GO
+
+/* Cria a chave estrangeira somente se ainda não existir */
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM sys.foreign_keys
+    WHERE name = N'FK_pergunta_resposta'
+      AND parent_object_id = OBJECT_ID(N'dbo.pergunta')
+)
+BEGIN
+    ALTER TABLE dbo.pergunta
+        ADD CONSTRAINT FK_pergunta_resposta
+        FOREIGN KEY (respostaC)
+        REFERENCES dbo.resposta (respostaCC);
+END;
+GO
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'IX_pergunta_respostaC'
+      AND object_id = OBJECT_ID(N'dbo.pergunta')
+)
+BEGIN
+    CREATE INDEX IX_pergunta_respostaC
+        ON dbo.pergunta (respostaC);
+END;
+GO
 
